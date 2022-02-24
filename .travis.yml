@@ -1,0 +1,36 @@
+language: generic
+
+sudo: required
+
+services:
+  - docker
+
+before_install:
+  - docker build -t le2sky/react-test-app -f ./frontend/Dockerfile.dev ./frontend
+
+script:
+  - docker run -e CI=true le2sky/react-test-app npm test
+
+after_success:
+  - docker build -t le2sky/docker-frontend ./frontend
+  - docker build -t le2sky/docker-backend ./backend
+  - docker build -t le2sky/docker-nginx ./nginx
+
+  - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_ID" --password-stdin
+
+  - docker push le2sky/docker-frontend
+  - docker push le2sky/docker-backend
+  - docker push le2sky/docker-nginx
+
+deploy:
+  provider: elasticbeanstalk
+  region: "ap-northeast-2"
+  app: "docker-fullstack-app"
+  env: "Dockerfullstackapp-env"
+  bucket_name: elasticbeanstalk-ap-northeast-2-315199840269
+  bucket_path: "docker-fullstack-app"
+  on:
+    branch: main
+
+  access_key_id: $AWS_ACCESS_KEY
+  secret_access_key: $AWS_SECRET_ACCESS_KEY
